@@ -5,6 +5,7 @@
 #include <assert.h>
 
 #include <lua.h>
+#define LUA_COMPAT_MODULE
 #include <lauxlib.h>
 
 #define LUACMSGPACK_VERSION     "lua-cmsgpack 0.3.0"
@@ -328,7 +329,7 @@ static void mp_encode_lua_type(lua_State *L, mp_buf *buf, int level);
 
 /* Convert a lua table into a message pack list. */
 static void mp_encode_lua_table_as_array(lua_State *L, mp_buf *buf, int level) {
-    size_t len = lua_objlen(L,-1), j;
+    size_t len = lua_rawlen(L,-1), j;
 
     mp_encode_array(buf,len);
     for (j = 1; j <= len; j++) {
@@ -687,7 +688,7 @@ static int mp_unpack(lua_State *L) {
 
 /* ---------------------------------------------------------------------------- */
 
-static const struct luaL_reg thislib[] = {
+static const struct luaL_Reg thislib[] = {
     {"pack", mp_pack},
     {"unpack", mp_unpack},
     {NULL, NULL}

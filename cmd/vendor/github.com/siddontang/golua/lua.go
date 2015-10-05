@@ -176,7 +176,7 @@ func (L *State) AtPanic(panicf LuaGoFunction) (oldpanicf LuaGoFunction) {
 }
 
 func (L *State) pcall(nargs, nresults, errfunc int) int {
-	return int(C.lua_pcall(L.s, C.int(nargs), C.int(nresults), C.int(errfunc)))
+	return int(C.lua_pcallk(L.s, C.int(nargs), C.int(nresults), C.int(errfunc), 0, nil))
 }
 
 func (L *State) callEx(nargs, nresults int, catch bool) (err error) {
@@ -206,6 +206,11 @@ func (L *State) callEx(nargs, nresults int, catch bool) (err error) {
 	return
 }
 
+// lua_absindex
+func (L *State) AbsIndex(index int) int {
+	return int(C.lua_absindex(L.s, C.int(index)))
+}
+
 // lua_call
 func (L *State) Call(nargs, nresults int) (err error) {
 	return L.callEx(nargs, nresults, true)
@@ -232,6 +237,11 @@ func (L *State) Concat(n int) {
 	C.lua_concat(L.s, C.int(n))
 }
 
+// lua_copy
+func (L *State) Copy(fromidx int, toidx int) {
+	C.lua_copy(L.s, C.int(fromidx), C.int(toidx))
+}
+
 // lua_createtable
 func (L *State) CreateTable(narr int, nrec int) {
 	C.lua_createtable(L.s, C.int(narr), C.int(nrec))
@@ -239,14 +249,14 @@ func (L *State) CreateTable(narr int, nrec int) {
 
 // lua_equal
 func (L *State) Equal(index1, index2 int) bool {
-	return C.lua_equal(L.s, C.int(index1), C.int(index2)) == 1
+	return C.lua_compare(L.s, C.int(index1), C.int(index2), C.LUA_OPEQ) == 1
 }
 
 // lua_gc
 func (L *State) GC(what, data int) int { return int(C.lua_gc(L.s, C.int(what), C.int(data))) }
 
 // lua_getfenv
-func (L *State) GetfEnv(index int) { C.lua_getfenv(L.s, C.int(index)) }
+func (L *State) GetfEnv(index int) { C.lua_getuservalue(L.s, C.int(index)) }
 
 // lua_getfield
 func (L *State) GetField(index int, k string) {
@@ -256,7 +266,11 @@ func (L *State) GetField(index int, k string) {
 }
 
 // Pushes on the stack the value of a global variable (lua_getglobal)
-func (L *State) GetGlobal(name string) { L.GetField(LUA_GLOBALSINDEX, name) }
+func (L *State) GetGlobal(name string) {
+	Ck := C.CString(name)
+	defer C.free(unsafe.Pointer(Ck))
+	C.lua_getglobal(L.s, Ck)
+}
 
 // lua_getmetatable
 func (L *State) GetMetaTable(index int) bool {
@@ -268,6 +282,11 @@ func (L *State) GetTable(index int) { C.lua_gettable(L.s, C.int(index)) }
 
 // lua_gettop
 func (L *State) GetTop() int { return int(C.lua_gettop(L.s)) }
+
+// lua_getuservalue
+func (L *State) GetUserValue(index int) {
+	C.lua_getuservalue(L.s, C.int(index))
+}
 
 // lua_insert
 func (L *State) Insert(index int) { C.lua_insert(L.s, C.int(index)) }
@@ -325,9 +344,14 @@ func (L *State) IsThread(index int) bool {
 // lua_isuserdata
 func (L *State) IsUserdata(index int) bool { return C.lua_isuserdata(L.s, C.int(index)) == 1 }
 
+// lua_len
+func (L *State) Len(idx int) {
+	C.lua_len(L.s, C.int(idx))
+}
+
 // lua_lessthan
 func (L *State) LessThan(index1, index2 int) bool {
-	return C.lua_lessthan(L.s, C.int(index1), C.int(index2)) == 1
+	return C.lua_compare(L.s, C.int(index1), C.int(index2), C.LUA_OPLT) == 1
 }
 
 // Creates a new lua interpreter state with the given allocation function
@@ -357,7 +381,7 @@ func (L *State) Next(index int) int {
 
 // lua_objlen
 func (L *State) ObjLen(index int) uint {
-	return uint(C.lua_objlen(L.s, C.int(index)))
+	return uint(C.lua_rawlen(L.s, C.int(index)))
 }
 
 // lua_pop
@@ -388,6 +412,11 @@ func (L *State) PushString(str string) {
 // lua_pushinteger
 func (L *State) PushInteger(n int64) {
 	C.lua_pushinteger(L.s, C.lua_Integer(n))
+}
+
+// lua_pushunsigned
+func (L *State) PushUnsigned(n uint64) {
+	C.lua_pushunsigned(L.s, C.lua_Unsigned(n))
 }
 
 // lua_pushnil
@@ -425,6 +454,11 @@ func (L *State) RawGeti(index int, n int) {
 	C.lua_rawgeti(L.s, C.int(index), C.int(n))
 }
 
+// lua_rawlen
+func (L *State) RawLen(index int) uint {
+	return uint(C.lua_rawlen(L.s, C.int(index)))
+}
+
 // lua_rawset
 func (L *State) RawSet(index int) {
 	C.lua_rawset(L.s, C.int(index))
@@ -453,7 +487,7 @@ func (L *State) Replace(index int) {
 
 // lua_resume
 func (L *State) Resume(narg int) int {
-	return int(C.lua_resume(L.s, C.int(narg)))
+	return int(C.lua_resume(L.s, nil, C.int(narg)))
 }
 
 // lua_setallocf
@@ -463,7 +497,7 @@ func (L *State) SetAllocf(f Alloc) {
 
 // lua_setfenv
 func (L *State) SetfEnv(index int) {
-	C.lua_setfenv(L.s, C.int(index))
+	C.lua_setuservalue(L.s, C.int(index))
 }
 
 // lua_setfield
@@ -477,7 +511,7 @@ func (L *State) SetField(index int, k string) {
 func (L *State) SetGlobal(name string) {
 	Cname := C.CString(name)
 	defer C.free(unsafe.Pointer(Cname))
-	C.lua_setfield(L.s, C.int(LUA_GLOBALSINDEX), Cname)
+	C.lua_setglobal(L.s, Cname)
 }
 
 // lua_setmetatable
@@ -498,6 +532,11 @@ func (L *State) SetTop(index int) {
 // lua_status
 func (L *State) Status() int {
 	return int(C.lua_status(L.s))
+}
+
+// lua_setuservalue
+func (L *State) SetUserValue(index int) {
+	C.lua_setuservalue(L.s, C.int(index))
 }
 
 // lua_toboolean
@@ -538,12 +577,17 @@ func (L *State) ToString(index int) string {
 
 // lua_tointeger
 func (L *State) ToInteger(index int) int {
-	return int(C.lua_tointeger(L.s, C.int(index)))
+	return int(C.lua_tointegerx(L.s, C.int(index), nil))
+}
+
+// lua_tounsigned
+func (L *State) ToUnsigned(index int) uint {
+	return uint(C.lua_tounsignedx(L.s, C.int(index), nil))
 }
 
 // lua_tonumber
 func (L *State) ToNumber(index int) float64 {
-	return float64(C.lua_tonumber(L.s, C.int(index)))
+	return float64(C.lua_tonumberx(L.s, C.int(index), nil))
 }
 
 // lua_topointer
@@ -579,7 +623,7 @@ func XMove(from *State, to *State, n int) {
 
 // lua_yield
 func (L *State) Yield(nresults int) int {
-	return int(C.lua_yield(L.s, C.int(nresults)))
+	return int(C.lua_yieldk(L.s, C.int(nresults), 0, nil))
 }
 
 // Restricted library opens
@@ -617,6 +661,21 @@ func (L *State) OpenTable() {
 // Calls luaopen_os
 func (L *State) OpenOS() {
 	C.clua_openos(L.s)
+}
+
+// Calls luaopen_debug
+func (L *State) OpenDebug() {
+	C.clua_opendebug(L.s)
+}
+
+// Calls luaopen_bit32
+func (L *State) OpenBit32() {
+	C.clua_openbit32(L.s)
+}
+
+// Calls luaopen_coroutine
+func (L *State) OpenCoroutine() {
+	C.clua_opencoroutine(L.s)
 }
 
 // Sets the maximum number of operations to execute at instrNumber, after this the execution ends

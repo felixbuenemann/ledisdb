@@ -271,7 +271,7 @@ int callback_panicf(lua_State* L)
 {
 	lua_pushlightuserdata(L,(void*)&PanicFIDRegistryKey);
 	lua_gettable(L,LUA_REGISTRYINDEX);
-	unsigned int fid = lua_tointeger(L,-1);
+	unsigned int fid = lua_tointegerx(L,-1,NULL);
 	lua_pop(L,1);
 	size_t gostateindex = clua_getgostate(L);
 	return golua_callpanicfunction(gostateindex,fid);
@@ -286,7 +286,7 @@ GoInterface clua_atpanic(lua_State* L, unsigned int panicf_id)
 	lua_pushlightuserdata(L, (void*)&PanicFIDRegistryKey);
 	lua_gettable(L,LUA_REGISTRYINDEX);
 	if(lua_isnil(L, -1) == 0)
-		old_id = lua_tointeger(L,-1);
+		old_id = lua_tointegerx(L,-1,NULL);
 	lua_pop(L, 1);
 
 	//set registry key for function id of go panic function
@@ -340,44 +340,56 @@ void clua_openbase(lua_State* L)
 
 void clua_openio(lua_State* L)
 {
-	lua_pushcfunction(L,&luaopen_io);
-	lua_pushstring(L,"io");
-	lua_call(L, 1, 0);
+	luaL_requiref(L, "io", &luaopen_io, 1);
+	lua_pop(L, 1);
 }
 
 void clua_openmath(lua_State* L)
 {
-	lua_pushcfunction(L,&luaopen_math);
-	lua_pushstring(L,"math");
-	lua_call(L, 1, 0);
+	luaL_requiref(L, "math", &luaopen_math, 1);
+	lua_pop(L, 1);
 }
 
 void clua_openpackage(lua_State* L)
 {
-	lua_pushcfunction(L,&luaopen_package);
-	lua_pushstring(L,"package");
-	lua_call(L, 1, 0);
+	luaL_requiref(L, "package", &luaopen_package, 1);
+	lua_pop(L, 1);
 }
 
 void clua_openstring(lua_State* L)
 {
-	lua_pushcfunction(L,&luaopen_string);
-	lua_pushstring(L,"string");
-	lua_call(L, 1, 0);
+	luaL_requiref(L, "string", &luaopen_string, 1);
+	lua_pop(L, 1);
 }
 
 void clua_opentable(lua_State* L)
 {
-	lua_pushcfunction(L,&luaopen_table);
-	lua_pushstring(L,"table");
-	lua_call(L, 1, 0);
+	luaL_requiref(L, "table", &luaopen_table, 1);
+	lua_pop(L, 1);
 }
 
 void clua_openos(lua_State* L)
 {
-	lua_pushcfunction(L,&luaopen_os);
-	lua_pushstring(L,"os");
-	lua_call(L, 1, 0);
+	luaL_requiref(L, "os", &luaopen_os, 1);
+	lua_pop(L, 1);
+}
+
+void clua_opencoroutine(lua_State *L)
+{
+	luaL_requiref(L, "coroutine", &luaopen_coroutine, 1);
+	lua_pop(L, 1);
+}
+
+void clua_opendebug(lua_State *L)
+{
+	luaL_requiref(L, "debug", &luaopen_debug, 1);
+	lua_pop(L, 1);
+}
+
+void clua_openbit32(lua_State *L)
+{
+	luaL_requiref(L, "bit32", &luaopen_bit32, 1);
+	lua_pop(L, 1);
 }
 
 void clua_hook_function(lua_State *L, lua_Debug *ar)

@@ -42,6 +42,7 @@
 #include <string.h>
 #include <math.h>
 #include <lua.h>
+#define LUA_COMPAT_MODULE
 #include <lauxlib.h>
 
 #include "strbuf.h"
